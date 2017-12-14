@@ -18,38 +18,38 @@ package com.google.firebase.udacity.friendlychat;
 import android.content.Intent;
 import android.net.Uri;
 import android.os.Bundle;
-import android.support.annotation.NonNull;
 import android.support.v7.app.AppCompatActivity;
+import android.support.v7.widget.LinearLayoutManager;
+import android.support.v7.widget.RecyclerView;
 import android.text.Editable;
 import android.text.InputFilter;
 import android.text.TextWatcher;
 import android.util.Log;
+import android.view.LayoutInflater;
 import android.view.Menu;
 import android.view.MenuInflater;
 import android.view.MenuItem;
 import android.view.View;
+import android.view.ViewGroup;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.ImageButton;
-import android.widget.ListView;
 import android.widget.ProgressBar;
 import android.widget.Toast;
 
 import com.firebase.ui.auth.AuthUI;
-import com.google.android.gms.tasks.OnFailureListener;
-import com.google.android.gms.tasks.OnSuccessListener;
+import com.firebase.ui.database.FirebaseRecyclerAdapter;
+import com.firebase.ui.database.FirebaseRecyclerOptions;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
 import com.google.firebase.database.ChildEventListener;
-import com.google.firebase.database.DataSnapshot;
-import com.google.firebase.database.DatabaseError;
 import com.google.firebase.database.DatabaseReference;
 import com.google.firebase.database.FirebaseDatabase;
+import com.google.firebase.database.Query;
 import com.google.firebase.remoteconfig.FirebaseRemoteConfig;
 import com.google.firebase.remoteconfig.FirebaseRemoteConfigSettings;
 import com.google.firebase.storage.FirebaseStorage;
 import com.google.firebase.storage.StorageReference;
-import com.google.firebase.storage.UploadTask;
 import com.google.firebase.udacity.friendlychat.constant.FriendlyChatConstants;
 import com.google.firebase.udacity.friendlychat.model.FriendlyMessage;
 
@@ -62,8 +62,8 @@ import java.util.Map;
 public class MainActivity extends AppCompatActivity {
 
     // Activity elements
-    private ListView messageListView;
-    private MessageAdapter messageAdapter;
+    private RecyclerView messagesRecyclerView;
+    private FirebaseRecyclerAdapter recyclerAdapter;
     private ProgressBar progressBar;
     private ImageButton photoPickerButton;
     private EditText messageEditText;
@@ -99,15 +99,39 @@ public class MainActivity extends AppCompatActivity {
 
         // Initialize references to views
         progressBar = findViewById(R.id.progressBar);
-        messageListView = findViewById(R.id.messageListView);
+        messagesRecyclerView = findViewById(R.id.messageRecyclerView);
         photoPickerButton = findViewById(R.id.photoPickerButton);
         messageEditText = findViewById(R.id.messageEditText);
         sendButton = findViewById(R.id.sendButton);
 
-        // Initialize message ListView and its adapter
         List<FriendlyMessage> friendlyMessages = new ArrayList<>();
-        messageAdapter = new MessageAdapter(this, R.layout.item_message, friendlyMessages);
-        messageListView.setAdapter(messageAdapter);
+
+        // recycler adapter with FirebaseUI - automatically reviews changes in database
+        // and refreshes messages view in RecyclerView
+        Query query = messagesDatabaseReference.limitToLast(50);
+        FirebaseRecyclerOptions<FriendlyMessage> options =
+                new FirebaseRecyclerOptions.Builder<FriendlyMessage>()
+                        .setQuery(query, FriendlyMessage.class)
+                        .build();
+        recyclerAdapter = new FirebaseRecyclerAdapter<FriendlyMessage, ChatHolder>(options) {
+            @Override
+            public ChatHolder onCreateViewHolder(ViewGroup parent, int viewType) {
+                View view = LayoutInflater.from(parent.getContext())
+                        .inflate(R.layout.item_message, parent, false);
+
+                return new ChatHolder(view);
+            }
+
+            @Override
+            protected void onBindViewHolder(ChatHolder holder, int position, FriendlyMessage message) {
+                holder.bind(message);
+            }
+        };
+
+        messagesRecyclerView.setHasFixedSize(true);
+        RecyclerView.LayoutManager layoutManager = new LinearLayoutManager(this);
+        messagesRecyclerView.setLayoutManager(layoutManager);
+        messagesRecyclerView.setAdapter(recyclerAdapter);
 
         // Initialize progress bar
         progressBar.setVisibility(ProgressBar.INVISIBLE);
@@ -233,7 +257,7 @@ public class MainActivity extends AppCompatActivity {
         if (authStateListener != null) {
             firebaseAuth.removeAuthStateListener(authStateListener);
         }
-        messageAdapter.clear();
+        recyclerAdapter.stopListening();
         detachDatabaseReadListener();
     }
 
@@ -257,31 +281,13 @@ public class MainActivity extends AppCompatActivity {
 
     private void onSignedInInitialize(String username) {
         this.username = username;
-        attachDatabaseReadListener();
+        recyclerAdapter.startListening();
     }
 
     private void onSignedOutCleanup() {
         username = FriendlyChatConstants.ANONYMOUS;
-        messageAdapter.clear();
+        recyclerAdapter.stopListening();
         detachDatabaseReadListener();
-    }
-
-    private void attachDatabaseReadListener() {
-        if (childEventListener == null) {
-            childEventListener = new ChildEventListener() {
-                @Override
-                public void onChildAdded(DataSnapshot dataSnapshot, String s) {
-                    FriendlyMessage friendlyMessage = dataSnapshot.getValue(FriendlyMessage.class);
-                    messageAdapter.add(friendlyMessage);
-                }
-
-                public void onChildChanged(DataSnapshot dataSnapshot, String s) {}
-                public void onChildRemoved(DataSnapshot dataSnapshot) {}
-                public void onChildMoved(DataSnapshot dataSnapshot, String s) {}
-                public void onCancelled(DatabaseError databaseError) {}
-            };
-            messagesDatabaseReference.addChildEventListener(childEventListener);
-        }
     }
 
     private void detachDatabaseReadListener() {
