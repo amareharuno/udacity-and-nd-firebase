@@ -48,6 +48,8 @@ dependencies {
     compile "com.google.firebase:firebase-database:$firebaseFeaturesVersion"
     compile "com.google.firebase:firebase-auth:$firebaseFeaturesVersion"
     compile "com.google.firebase:firebase-storage:$firebaseFeaturesVersion"
+    compile "com.google.firebase:firebase-messaging:$firebaseFeaturesVersion"
+    compile "com.google.firebase:firebase-config:$firebaseFeaturesVersion"
 
     // Firebase UI
     compile 'com.firebaseui:firebase-ui-auth:3.1.0' // compatible with 11.4.2 Firebase/Play Services Version
