@@ -1,18 +1,3 @@
-/**
- * Copyright Google Inc. All Rights Reserved.
- * <p/>
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- * <p/>
- * http://www.apache.org/licenses/LICENSE-2.0
- * <p/>
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
 package com.google.firebase.udacity.friendlychat;
 
 import android.content.Intent;
@@ -42,7 +27,6 @@ import com.firebase.ui.database.FirebaseRecyclerAdapter;
 import com.firebase.ui.database.FirebaseRecyclerOptions;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
-import com.google.firebase.database.ChildEventListener;
 import com.google.firebase.database.DatabaseReference;
 import com.google.firebase.database.FirebaseDatabase;
 import com.google.firebase.database.Query;
@@ -53,39 +37,35 @@ import com.google.firebase.storage.StorageReference;
 import com.google.firebase.udacity.friendlychat.constant.FriendlyChatConstants;
 import com.google.firebase.udacity.friendlychat.model.FriendlyMessage;
 
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 
 public class MainActivity extends AppCompatActivity {
 
+    private String username;
+
     // Activity elements
-    private RecyclerView messagesRecyclerView;
-    private FirebaseRecyclerAdapter recyclerAdapter;
     private ProgressBar progressBar;
     private ImageButton photoPickerButton;
     private EditText messageEditText;
     private Button sendButton;
-
-    private String username;
+    private RecyclerView messagesRecyclerView;
 
     // Firebase instance variables
     private FirebaseDatabase firebaseDatabase;
     private DatabaseReference messagesDatabaseReference;
-    private ChildEventListener childEventListener;
     private FirebaseAuth firebaseAuth;
     private FirebaseAuth.AuthStateListener authStateListener;
     private FirebaseStorage firebaseStorage;
     private StorageReference chatPhotosStorageReference;
     private FirebaseRemoteConfig firebaseRemoteConfig;
+    private FirebaseRecyclerAdapter recyclerAdapter;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
-
         username = FriendlyChatConstants.ANONYMOUS;
 
         // Initialize Firebase components
@@ -94,6 +74,7 @@ public class MainActivity extends AppCompatActivity {
         firebaseStorage = FirebaseStorage.getInstance();
         firebaseRemoteConfig = FirebaseRemoteConfig.getInstance();
 
+        // References to Firebase storage & DB
         messagesDatabaseReference = firebaseDatabase.getReference().child("messages");
         chatPhotosStorageReference = firebaseStorage.getReference().child("chat_photos");
 
@@ -104,33 +85,28 @@ public class MainActivity extends AppCompatActivity {
         messageEditText = findViewById(R.id.messageEditText);
         sendButton = findViewById(R.id.sendButton);
 
-        List<FriendlyMessage> friendlyMessages = new ArrayList<>();
-
-        // recycler adapter with FirebaseUI - automatically reviews changes in database
-        // and refreshes messages view in RecyclerView
+        // recycler adapter with FirebaseUI - automatically reacts on changes in database and refreshes messages view in RecyclerView
         Query query = messagesDatabaseReference.limitToLast(50);
-        FirebaseRecyclerOptions<FriendlyMessage> options =
-                new FirebaseRecyclerOptions.Builder<FriendlyMessage>()
-                        .setQuery(query, FriendlyMessage.class)
-                        .build();
-        recyclerAdapter = new FirebaseRecyclerAdapter<FriendlyMessage, ChatHolder>(options) {
-            @Override
-            public ChatHolder onCreateViewHolder(ViewGroup parent, int viewType) {
-                View view = LayoutInflater.from(parent.getContext())
-                        .inflate(R.layout.item_message, parent, false);
+        FirebaseRecyclerOptions<FriendlyMessage> recyclerOptions = new FirebaseRecyclerOptions.Builder<FriendlyMessage>()
+                .setQuery(query, FriendlyMessage.class)
+                .build();
 
-                return new ChatHolder(view);
+        recyclerAdapter = new FirebaseRecyclerAdapter<FriendlyMessage, MessageHolder>(recyclerOptions) {
+            @Override
+            public MessageHolder onCreateViewHolder(ViewGroup parent, int viewType) {
+                View view = LayoutInflater.from(parent.getContext()).inflate(R.layout.item_message, parent, false);
+                return new MessageHolder(view);
             }
 
             @Override
-            protected void onBindViewHolder(ChatHolder holder, int position, FriendlyMessage message) {
+            protected void onBindViewHolder(MessageHolder holder, int position, FriendlyMessage message) {
                 holder.bind(message);
             }
         };
 
-        messagesRecyclerView.setHasFixedSize(true);
         RecyclerView.LayoutManager layoutManager = new LinearLayoutManager(this);
         messagesRecyclerView.setLayoutManager(layoutManager);
+        messagesRecyclerView.setHasFixedSize(true);
         messagesRecyclerView.setAdapter(recyclerAdapter);
 
         // Initialize progress bar
@@ -163,14 +139,12 @@ public class MainActivity extends AppCompatActivity {
             public void afterTextChanged(Editable editable) {
             }
         });
-        messageEditText.setFilters(new InputFilter[]{new InputFilter.LengthFilter(FriendlyChatConstants.DEFAULT_MSG_LENGTH_LIMIT)});
+        messageEditText.setFilters(new InputFilter[]{new InputFilter.LengthFilter(FriendlyChatConstants.DEFAULT_MSG_LENGTH_LIMIT)}); // can be set from firebase
 
         // Send button sends a message and clears the EditText
         sendButton.setOnClickListener(view -> {
             FriendlyMessage friendlyMessage = new FriendlyMessage(messageEditText.getText().toString(), username, null);
             messagesDatabaseReference.push().setValue(friendlyMessage);
-
-            // Clear input box
             messageEditText.setText("");
         });
 
@@ -215,31 +189,31 @@ public class MainActivity extends AppCompatActivity {
     @Override
     public void onActivityResult(int requestCode, int resultCode, Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
+
         if (requestCode == FriendlyChatConstants.RC_SIGN_IN) {
-            if (resultCode == RESULT_OK) {
-                // Sign-in succeeded, set up the UI
+            if (resultCode == RESULT_OK) { // Sign-in succeeded, set up the UI
                 Toast.makeText(this, "Signed in!", Toast.LENGTH_SHORT).show();
-            } else if (resultCode == RESULT_CANCELED) {
-                // Sign in was canceled by the user, finish the activity
+            } else if (resultCode == RESULT_CANCELED) { // Sign in was canceled by the user, finish the activity
                 Toast.makeText(this, "Sign in canceled", Toast.LENGTH_SHORT).show();
                 finish();
             }
         } else if (requestCode == FriendlyChatConstants.RC_PHOTO_PICKER && resultCode == RESULT_OK) {
             Uri selectedImageUri = data.getData();
-
             if (selectedImageUri != null) {
                 // Get a reference to store file at chat_photos/<FILENAME>
                 StorageReference photoRef = chatPhotosStorageReference.child(selectedImageUri.getLastPathSegment());
-
                 // Upload file to Firebase Storage
                 photoRef.putFile(selectedImageUri)
                         .addOnSuccessListener(this, taskSnapshot -> {
                             // When the image has successfully uploaded, we get its download URL
                             Uri downloadUrl = taskSnapshot.getDownloadUrl();
-
-                            // Set the download URL to the message box, so that the user can send it to the database
-                            FriendlyMessage friendlyMessage = new FriendlyMessage(null, username, downloadUrl.toString());
-                            messagesDatabaseReference.push().setValue(friendlyMessage);
+                            if (downloadUrl != null) {
+                                // Set the download URL to the message box, so that the user can send it to the database
+                                FriendlyMessage friendlyMessage = new FriendlyMessage(null, username, downloadUrl.toString());
+                                messagesDatabaseReference.push().setValue(friendlyMessage);
+                            } else {
+                                Toast.makeText(this, "Image wasn't uploaded", Toast.LENGTH_SHORT).show();
+                            }
                         });
             }
         }
@@ -258,7 +232,6 @@ public class MainActivity extends AppCompatActivity {
             firebaseAuth.removeAuthStateListener(authStateListener);
         }
         recyclerAdapter.stopListening();
-        detachDatabaseReadListener();
     }
 
     @Override
@@ -287,14 +260,6 @@ public class MainActivity extends AppCompatActivity {
     private void onSignedOutCleanup() {
         username = FriendlyChatConstants.ANONYMOUS;
         recyclerAdapter.stopListening();
-        detachDatabaseReadListener();
-    }
-
-    private void detachDatabaseReadListener() {
-        if (childEventListener != null) {
-            messagesDatabaseReference.removeEventListener(childEventListener);
-            childEventListener = null;
-        }
     }
 
     // Fetch the config to determine the allowed length of messages.
@@ -307,25 +272,20 @@ public class MainActivity extends AppCompatActivity {
         }
         firebaseRemoteConfig.fetch(cacheExpiration)
                 .addOnSuccessListener(aVoid -> {
-                    // Make the fetched config available
-                    // via FirebaseRemoteConfig get<type> calls, e.g., getLong, getString.
+                    // Make the fetched config available via FirebaseRemoteConfig get<type> calls, e.g., getLong, getString.
                     firebaseRemoteConfig.activateFetched();
-
-                    // Update the EditText length limit with
-                    // the newly retrieved values from Remote Config.
+                    // Update the EditText length limit with the newly retrieved values from Remote Config.
                     applyRetrievedLengthLimit();
                 })
                 .addOnFailureListener(e -> {
                     // An error occurred when fetching the config.
                     Log.w(FriendlyChatConstants.TAG, "Error fetching config", e);
-
-                    // Update the EditText length limit with
-                    // the newly retrieved values from Remote Config.
+                    // Update the EditText length limit with the newly retrieved values from Remote Config.
                     applyRetrievedLengthLimit();
                 });
     }
 
-//    Apply retrieved length limit to edit text field. This result may be fresh from the server or it may be from cached values.
+    //    Apply retrieved length limit to edit text field. This result may be fresh from the server or it may be from cached values.
     private void applyRetrievedLengthLimit() {
         Long friendly_msg_length = firebaseRemoteConfig.getLong(FriendlyChatConstants.FRIENDLY_MSG_LENGTH_KEY);
         messageEditText.setFilters(new InputFilter[]{new InputFilter.LengthFilter(friendly_msg_length.intValue())});

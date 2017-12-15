@@ -8,11 +8,11 @@ import android.widget.TextView;
 import com.bumptech.glide.Glide;
 import com.google.firebase.udacity.friendlychat.model.FriendlyMessage;
 
-public class ChatHolder extends RecyclerView.ViewHolder {
+public class MessageHolder extends RecyclerView.ViewHolder {
     private TextView messageTextView, authorTextView;
     private ImageView photoImageView;
 
-    public ChatHolder(View itemView) {
+    public MessageHolder(View itemView) {
         super(itemView);
         messageTextView = itemView.findViewById(R.id.messageTextView);
         authorTextView = itemView.findViewById(R.id.nameTextView);
