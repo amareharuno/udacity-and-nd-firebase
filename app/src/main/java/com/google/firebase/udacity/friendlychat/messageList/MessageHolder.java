@@ -7,7 +7,7 @@ import android.widget.TextView;
 
 import com.bumptech.glide.Glide;
 import com.google.firebase.udacity.friendlychat.R;
-import com.google.firebase.udacity.friendlychat.model.FriendlyMessage;
+import com.google.firebase.udacity.friendlychat.model.Message;
 
 public class MessageHolder
         extends RecyclerView.ViewHolder
@@ -32,7 +32,7 @@ public class MessageHolder
         itemView.setOnLongClickListener(this);
     }
 
-    public void bind(FriendlyMessage message) {
+    public void bind(Message message) {
         boolean isPhoto = message.getPhotoUrl() != null;
         if (isPhoto) {
             messageTextView.setVisibility(View.GONE);

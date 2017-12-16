@@ -1,6 +1,6 @@
 package com.google.firebase.udacity.friendlychat.constant;
 
-public final class FriendlyChatConstants {
+public final class Constants {
     public static final String TAG = "MainActivity";
     public static final String ANONYMOUS = "anonymous";
 

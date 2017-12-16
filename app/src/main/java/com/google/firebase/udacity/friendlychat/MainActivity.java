@@ -1,6 +1,5 @@
 package com.google.firebase.udacity.friendlychat;
 
-import android.content.Context;
 import android.content.Intent;
 import android.net.Uri;
 import android.os.Bundle;
@@ -35,10 +34,10 @@ import com.google.firebase.remoteconfig.FirebaseRemoteConfig;
 import com.google.firebase.remoteconfig.FirebaseRemoteConfigSettings;
 import com.google.firebase.storage.FirebaseStorage;
 import com.google.firebase.storage.StorageReference;
-import com.google.firebase.udacity.friendlychat.constant.FriendlyChatConstants;
+import com.google.firebase.udacity.friendlychat.constant.Constants;
 import com.google.firebase.udacity.friendlychat.messageList.ItemClickListener;
 import com.google.firebase.udacity.friendlychat.messageList.MessageHolder;
-import com.google.firebase.udacity.friendlychat.model.FriendlyMessage;
+import com.google.firebase.udacity.friendlychat.model.Message;
 
 import java.util.Arrays;
 import java.util.HashMap;
@@ -69,7 +68,7 @@ public class MainActivity extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
-        username = FriendlyChatConstants.ANONYMOUS;
+        username = Constants.ANONYMOUS;
 
         // Initialize Firebase components
         firebaseDatabase = FirebaseDatabase.getInstance();
@@ -90,11 +89,11 @@ public class MainActivity extends AppCompatActivity {
 
         // recycler adapter with FirebaseUI - automatically reacts on changes in database and refreshes messages view in RecyclerView
         Query query = messagesDatabaseReference.limitToLast(50);
-        FirebaseRecyclerOptions<FriendlyMessage> recyclerOptions = new FirebaseRecyclerOptions.Builder<FriendlyMessage>()
-                .setQuery(query, FriendlyMessage.class)
+        FirebaseRecyclerOptions<Message> recyclerOptions = new FirebaseRecyclerOptions.Builder<Message>()
+                .setQuery(query, Message.class)
                 .build();
 
-        recyclerAdapter = new FirebaseRecyclerAdapter<FriendlyMessage, MessageHolder>(recyclerOptions) {
+        recyclerAdapter = new FirebaseRecyclerAdapter<Message, MessageHolder>(recyclerOptions) {
             ItemClickListener clickListener = ClickedItemIndex -> Toast.makeText(MainActivity.this, "Message clicked", Toast.LENGTH_SHORT).show();
             ItemClickListener longClickListener = ClickedItemIndex -> Toast.makeText(MainActivity.this, "Message long clicked", Toast.LENGTH_SHORT).show();
 
@@ -105,7 +104,7 @@ public class MainActivity extends AppCompatActivity {
             }
 
             @Override
-            protected void onBindViewHolder(MessageHolder holder, int position, FriendlyMessage message) {
+            protected void onBindViewHolder(MessageHolder holder, int position, Message message) {
                 holder.bind(message);
             }
         };
@@ -123,7 +122,7 @@ public class MainActivity extends AppCompatActivity {
             Intent intent = new Intent(Intent.ACTION_GET_CONTENT);
             intent.setType("image/jpeg");
             intent.putExtra(Intent.EXTRA_LOCAL_ONLY, true);
-            startActivityForResult(Intent.createChooser(intent, "Complete action using"), FriendlyChatConstants.RC_PHOTO_PICKER);
+            startActivityForResult(Intent.createChooser(intent, "Complete action using"), Constants.RC_PHOTO_PICKER);
         });
 
         // Enable Send button when there's text to send
@@ -145,12 +144,12 @@ public class MainActivity extends AppCompatActivity {
             public void afterTextChanged(Editable editable) {
             }
         });
-        messageEditText.setFilters(new InputFilter[]{new InputFilter.LengthFilter(FriendlyChatConstants.DEFAULT_MSG_LENGTH_LIMIT)}); // can be set from firebase
+        messageEditText.setFilters(new InputFilter[]{new InputFilter.LengthFilter(Constants.DEFAULT_MSG_LENGTH_LIMIT)}); // can be set from firebase
 
         // Send button sends a message and clears the EditText
         sendButton.setOnClickListener(view -> {
-            FriendlyMessage friendlyMessage = new FriendlyMessage(messageEditText.getText().toString(), username, null);
-            messagesDatabaseReference.push().setValue(friendlyMessage);
+            Message message = new Message(messageEditText.getText().toString(), username, null);
+            messagesDatabaseReference.push().setValue(message);
             messageEditText.setText("");
         });
 
@@ -170,8 +169,10 @@ public class MainActivity extends AppCompatActivity {
                                         Arrays.asList(
                                                 new AuthUI.IdpConfig.Builder(AuthUI.EMAIL_PROVIDER).build(),
                                                 new AuthUI.IdpConfig.Builder(AuthUI.GOOGLE_PROVIDER).build()))
+                                .setTheme(R.style.LoginTheme)
+                                .setLogo(R.mipmap.logo)
                                 .build(),
-                        FriendlyChatConstants.RC_SIGN_IN);
+                        Constants.RC_SIGN_IN);
             }
         };
 
@@ -187,7 +188,7 @@ public class MainActivity extends AppCompatActivity {
         // Define default config values. Defaults are used when fetched config values are not
         // available. Eg: if an error occurred fetching values from the server.
         Map<String, Object> defaultConfigMap = new HashMap<>();
-        defaultConfigMap.put(FriendlyChatConstants.FRIENDLY_MSG_LENGTH_KEY, FriendlyChatConstants.DEFAULT_MSG_LENGTH_LIMIT);
+        defaultConfigMap.put(Constants.FRIENDLY_MSG_LENGTH_KEY, Constants.DEFAULT_MSG_LENGTH_LIMIT);
         firebaseRemoteConfig.setDefaults(defaultConfigMap);
         fetchConfig();
     }
@@ -196,14 +197,14 @@ public class MainActivity extends AppCompatActivity {
     public void onActivityResult(int requestCode, int resultCode, Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
 
-        if (requestCode == FriendlyChatConstants.RC_SIGN_IN) {
+        if (requestCode == Constants.RC_SIGN_IN) {
             if (resultCode == RESULT_OK) { // Sign-in succeeded, set up the UI
                 Toast.makeText(this, "Signed in!", Toast.LENGTH_SHORT).show();
             } else if (resultCode == RESULT_CANCELED) { // Sign in was canceled by the user, finish the activity
                 Toast.makeText(this, "Sign in canceled", Toast.LENGTH_SHORT).show();
                 finish();
             }
-        } else if (requestCode == FriendlyChatConstants.RC_PHOTO_PICKER && resultCode == RESULT_OK) {
+        } else if (requestCode == Constants.RC_PHOTO_PICKER && resultCode == RESULT_OK) {
             Uri selectedImageUri = data.getData();
             if (selectedImageUri != null) {
                 // Get a reference to store file at chat_photos/<FILENAME>
@@ -215,8 +216,8 @@ public class MainActivity extends AppCompatActivity {
                             Uri downloadUrl = taskSnapshot.getDownloadUrl();
                             if (downloadUrl != null) {
                                 // Set the download URL to the message box, so that the user can send it to the database
-                                FriendlyMessage friendlyMessage = new FriendlyMessage(null, username, downloadUrl.toString());
-                                messagesDatabaseReference.push().setValue(friendlyMessage);
+                                Message message = new Message(null, username, downloadUrl.toString());
+                                messagesDatabaseReference.push().setValue(message);
                             } else {
                                 Toast.makeText(this, "Image wasn't uploaded", Toast.LENGTH_SHORT).show();
                             }
@@ -264,7 +265,7 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void onSignedOutCleanup() {
-        username = FriendlyChatConstants.ANONYMOUS;
+        username = Constants.ANONYMOUS;
         recyclerAdapter.stopListening();
     }
 
@@ -285,7 +286,7 @@ public class MainActivity extends AppCompatActivity {
                 })
                 .addOnFailureListener(e -> {
                     // An error occurred when fetching the config.
-                    Log.w(FriendlyChatConstants.TAG, "Error fetching config", e);
+                    Log.w(Constants.TAG, "Error fetching config", e);
                     // Update the EditText length limit with the newly retrieved values from Remote Config.
                     applyRetrievedLengthLimit();
                 });
@@ -293,8 +294,8 @@ public class MainActivity extends AppCompatActivity {
 
     //    Apply retrieved length limit to edit text field. This result may be fresh from the server or it may be from cached values.
     private void applyRetrievedLengthLimit() {
-        Long friendly_msg_length = firebaseRemoteConfig.getLong(FriendlyChatConstants.FRIENDLY_MSG_LENGTH_KEY);
+        Long friendly_msg_length = firebaseRemoteConfig.getLong(Constants.FRIENDLY_MSG_LENGTH_KEY);
         messageEditText.setFilters(new InputFilter[]{new InputFilter.LengthFilter(friendly_msg_length.intValue())});
-        Log.d(FriendlyChatConstants.TAG, FriendlyChatConstants.FRIENDLY_MSG_LENGTH_KEY + " = " + friendly_msg_length);
+        Log.d(Constants.TAG, Constants.FRIENDLY_MSG_LENGTH_KEY + " = " + friendly_msg_length);
     }
 }
