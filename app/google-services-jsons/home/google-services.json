@@ -1,35 +1,35 @@
 {
   "project_info": {
-    "project_number": "622415229704",
-    "firebase_url": "https://friendlychatnc.firebaseio.com",
-    "project_id": "friendlychatnc",
-    "storage_bucket": "friendlychatnc.appspot.com"
+    "project_number": "232702024681",
+    "firebase_url": "https://friendlychat-4e40d.firebaseio.com",
+    "project_id": "friendlychat-4e40d",
+    "storage_bucket": "friendlychat-4e40d.appspot.com"
   },
   "client": [
     {
       "client_info": {
-        "mobilesdk_app_id": "1:622415229704:android:64e58dacc0483faa",
+        "mobilesdk_app_id": "1:232702024681:android:64e58dacc0483faa",
         "android_client_info": {
           "package_name": "com.google.firebase.udacity.friendlychat"
         }
       },
       "oauth_client": [
         {
-          "client_id": "622415229704-c07m5lhuoe7p7gdu6p6eiuuo8tlljq47.apps.googleusercontent.com",
+          "client_id": "232702024681-8ai8nl4kghd7pgp1gufjpr0j6ir2q8bb.apps.googleusercontent.com",
           "client_type": 1,
           "android_info": {
             "package_name": "com.google.firebase.udacity.friendlychat",
-            "certificate_hash": "c55ebc5ba85d0196d4d58642bd1453f310ff1e86"
+            "certificate_hash": "d9b3105e46ea926fe378da8411beb49153fd14a8"
           }
         },
         {
-          "client_id": "622415229704-f8rn21vm807sm9327vi67h4pmcos0cae.apps.googleusercontent.com",
+          "client_id": "232702024681-o40oqi03l7rv58vcfh5l97f8ue6dro84.apps.googleusercontent.com",
           "client_type": 3
         }
       ],
       "api_key": [
         {
-          "current_key": "AIzaSyBODTgrbBhO_ybykQQdjEcnp0h7LGLhFjs"
+          "current_key": "AIzaSyC00vZ5nOI70C8o94nGCVFzd2OaRwRVPrY"
         }
       ],
       "services": {
@@ -40,7 +40,7 @@
           "status": 2,
           "other_platform_oauth_client": [
             {
-              "client_id": "622415229704-f8rn21vm807sm9327vi67h4pmcos0cae.apps.googleusercontent.com",
+              "client_id": "232702024681-o40oqi03l7rv58vcfh5l97f8ue6dro84.apps.googleusercontent.com",
               "client_type": 3
             }
           ]
