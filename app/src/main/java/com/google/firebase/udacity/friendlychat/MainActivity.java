@@ -107,12 +107,19 @@ public class MainActivity extends AppCompatActivity {
             protected void onBindViewHolder(MessageHolder holder, int position, Message message) {
                 holder.bind(message);
             }
+
+            @Override
+            public void onDataChanged() {
+                super.onDataChanged();
+                messagesRecyclerView.scrollToPosition(getItemCount() - 1);
+            }
         };
 
         RecyclerView.LayoutManager layoutManager = new LinearLayoutManager(this);
         messagesRecyclerView.setLayoutManager(layoutManager);
         messagesRecyclerView.setHasFixedSize(true);
         messagesRecyclerView.setAdapter(recyclerAdapter);
+        messagesRecyclerView.scrollToPosition(recyclerAdapter.getItemCount() - 1);
 
         // Initialize progress bar
         progressBar.setVisibility(ProgressBar.INVISIBLE);
