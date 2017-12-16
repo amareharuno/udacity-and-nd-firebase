@@ -1,5 +1,6 @@
 package com.google.firebase.udacity.friendlychat;
 
+import android.content.Context;
 import android.content.Intent;
 import android.net.Uri;
 import android.os.Bundle;
@@ -35,6 +36,8 @@ import com.google.firebase.remoteconfig.FirebaseRemoteConfigSettings;
 import com.google.firebase.storage.FirebaseStorage;
 import com.google.firebase.storage.StorageReference;
 import com.google.firebase.udacity.friendlychat.constant.FriendlyChatConstants;
+import com.google.firebase.udacity.friendlychat.messageList.ItemClickListener;
+import com.google.firebase.udacity.friendlychat.messageList.MessageHolder;
 import com.google.firebase.udacity.friendlychat.model.FriendlyMessage;
 
 import java.util.Arrays;
@@ -92,10 +95,13 @@ public class MainActivity extends AppCompatActivity {
                 .build();
 
         recyclerAdapter = new FirebaseRecyclerAdapter<FriendlyMessage, MessageHolder>(recyclerOptions) {
+            ItemClickListener clickListener = ClickedItemIndex -> Toast.makeText(MainActivity.this, "Message clicked", Toast.LENGTH_SHORT).show();
+            ItemClickListener longClickListener = ClickedItemIndex -> Toast.makeText(MainActivity.this, "Message long clicked", Toast.LENGTH_SHORT).show();
+
             @Override
             public MessageHolder onCreateViewHolder(ViewGroup parent, int viewType) {
                 View view = LayoutInflater.from(parent.getContext()).inflate(R.layout.item_message, parent, false);
-                return new MessageHolder(view);
+                return new MessageHolder(view, clickListener, longClickListener);
             }
 
             @Override
