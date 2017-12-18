@@ -12,4 +12,9 @@ public final class Constants {
     // Activity result codes
     public static final int RC_SIGN_IN = 1;
     public static final int RC_PHOTO_PICKER = 2;
+
+    // Context message menu
+    public static final int MENU_EDIT_MESSAGE = 1;
+    public static final int MENU_REMOVE_MESSAGE = 2;
+    public static final int MENU_COPY_MESSAGE_TEXT = 3;
 }

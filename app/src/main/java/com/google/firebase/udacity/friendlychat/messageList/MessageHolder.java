@@ -51,13 +51,13 @@ public class MessageHolder
     @Override
     public void onClick(View view) {
         int clickedPosition = getAdapterPosition();
-        clickListener.onItemClick(clickedPosition);
+        clickListener.onItemClick(clickedPosition, view);
     }
 
     @Override
     public boolean onLongClick(View view) {
         int clickedPosition = getAdapterPosition();
-        longClickListener.onItemClick(clickedPosition);
+        longClickListener.onItemClick(clickedPosition, view);
         return true;
     }
 }
