@@ -17,4 +17,6 @@ public final class Constants {
     public static final int MENU_EDIT_MESSAGE = 1;
     public static final int MENU_REMOVE_MESSAGE = 2;
     public static final int MENU_COPY_MESSAGE_TEXT = 3;
+
+    public static final String APP_ID_FOR_ADDMOB = "ca-app-pub-3450207078907523~9818432930";
 }

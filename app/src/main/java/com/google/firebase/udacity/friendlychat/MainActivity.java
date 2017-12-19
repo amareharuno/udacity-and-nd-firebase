@@ -29,14 +29,13 @@ import android.widget.Toast;
 import com.firebase.ui.auth.AuthUI;
 import com.firebase.ui.database.FirebaseRecyclerAdapter;
 import com.firebase.ui.database.FirebaseRecyclerOptions;
+import com.google.android.gms.ads.AdView;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
-import com.google.firebase.database.DataSnapshot;
 import com.google.firebase.database.DatabaseError;
 import com.google.firebase.database.DatabaseReference;
 import com.google.firebase.database.FirebaseDatabase;
 import com.google.firebase.database.Query;
-import com.google.firebase.database.ValueEventListener;
 import com.google.firebase.remoteconfig.FirebaseRemoteConfig;
 import com.google.firebase.remoteconfig.FirebaseRemoteConfigSettings;
 import com.google.firebase.storage.FirebaseStorage;
@@ -61,6 +60,7 @@ public class MainActivity extends AppCompatActivity {
     private Button sendButton;
     private Button updateButton;
     private RecyclerView messagesRecyclerView;
+//    private AdView adView;
 
     // Firebase instance variables
     private FirebaseDatabase firebaseDatabase;
@@ -71,8 +71,9 @@ public class MainActivity extends AppCompatActivity {
     private StorageReference chatPhotosStorageReference;
     private FirebaseRemoteConfig firebaseRemoteConfig;
     private FirebaseRecyclerAdapter recyclerAdapter;
-    private int changedOrAddedMessagePosition;
+    private int clickedMessagePosition;
     FirebaseUser currentUser;
+    Message clickedMessage;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -98,6 +99,12 @@ public class MainActivity extends AppCompatActivity {
         sendButton = findViewById(R.id.sendButton);
         updateButton = findViewById(R.id.updateButton);
 
+        // AdMob
+//        MobileAds.initialize(getApplicationContext(), Constants.APP_ID_FOR_ADDMOB);
+//        adView = findViewById(R.id.adBanner);
+//        AdRequest adRequest = new AdRequest.Builder().addTestDevice("C404AC823783BCD818248336C5D4045E").build();
+//        adView.loadAd(adRequest);
+
         // recycler adapter with FirebaseUI - automatically reacts on changes in database and refreshes messages view in RecyclerView
         Query query = messagesDatabaseReference;
         FirebaseRecyclerOptions<Message> recyclerOptions = new FirebaseRecyclerOptions.Builder<Message>()
@@ -105,21 +112,17 @@ public class MainActivity extends AppCompatActivity {
                 .build();
 
         recyclerAdapter = new FirebaseRecyclerAdapter<Message, MessageHolder>(recyclerOptions) {
-            ItemClickListener clickListener = (clickedItemPosition, view) -> {
-                Toast.makeText(MainActivity.this, clickedItemPosition + " Message clicked", Toast.LENGTH_SHORT).show();
-                changedOrAddedMessagePosition = clickedItemPosition;
-            };
-            ItemClickListener longClickListener = (clickedItemPosition, view) -> {
-                changedOrAddedMessagePosition = clickedItemPosition;
-                Toast.makeText(MainActivity.this, clickedItemPosition + " Message long clicked", Toast.LENGTH_SHORT).show();
+            ItemClickListener longClickListener = (clickedItemPosition, view, message) -> {
+                clickedMessagePosition = clickedItemPosition;
+                clickedMessage = message;
                 openContextMenu(view);
             };
 
             @Override
             public MessageHolder onCreateViewHolder(ViewGroup parent, int viewType) {
                 View view = LayoutInflater.from(parent.getContext()).inflate(R.layout.item_message, parent, false);
-                registerForContextMenu(view); // todo
-                return new MessageHolder(view, clickListener, longClickListener);
+                registerForContextMenu(view);
+                return new MessageHolder(view, longClickListener);
             }
 
             @Override
@@ -127,11 +130,11 @@ public class MainActivity extends AppCompatActivity {
                 holder.bind(message);
             }
 
-//            @Override
-//            public void onDataChanged() {
-//                super.onDataChanged();
-//                messagesRecyclerView.scrollToPosition(recyclerAdapter.getItemCount() - 1);
-//            }
+            @Override
+            public void onDataChanged() {
+                super.onDataChanged();
+                navigateToLastMessage( recyclerAdapter.getItemCount()- 1);
+            }
 
             @Override
             public void onError(DatabaseError error) {
@@ -183,8 +186,6 @@ public class MainActivity extends AppCompatActivity {
         sendButton.setOnClickListener(view -> {
             Message message = new Message(messageEditText.getText().toString(), username, null);
             messagesDatabaseReference.push().setValue(message);
-            messagesRecyclerView.scrollToPosition(recyclerAdapter.getItemCount() - 1);
-            changedOrAddedMessagePosition = recyclerAdapter.getItemCount() - 1;
             messageEditText.setText("");
         });
 
@@ -245,6 +246,7 @@ public class MainActivity extends AppCompatActivity {
             if (selectedImageUri != null) {
                 // Get a reference to store file at chat_photos/<FILENAME>
                 StorageReference photoRef = chatPhotosStorageReference.child(selectedImageUri.getLastPathSegment());
+                progressBar.setVisibility(View.VISIBLE);
                 // Upload file to Firebase Storage
                 photoRef.putFile(selectedImageUri)
                         .addOnSuccessListener(this, taskSnapshot -> {
@@ -254,10 +256,10 @@ public class MainActivity extends AppCompatActivity {
                                 // Set the download URL to the message box, so that the user can send it to the database
                                 Message message = new Message(null, username, downloadUrl.toString());
                                 messagesDatabaseReference.push().setValue(message);
-                                messagesRecyclerView.scrollToPosition(recyclerAdapter.getItemCount() - 1);
-                                changedOrAddedMessagePosition = recyclerAdapter.getItemCount() - 1;
+                                progressBar.setVisibility(View.INVISIBLE);
                             } else {
                                 Toast.makeText(this, "Image wasn't uploaded", Toast.LENGTH_SHORT).show();
+                                progressBar.setVisibility(View.INVISIBLE);
                             }
                         });
             }
@@ -268,12 +270,6 @@ public class MainActivity extends AppCompatActivity {
     protected void onResume() {
         super.onResume();
         firebaseAuth.addAuthStateListener(authStateListener);
-    }
-
-    @Override
-    protected void onStart() {
-        super.onStart();
-        messagesRecyclerView.scrollToPosition(recyclerAdapter.getItemCount() - 1);
     }
 
     @Override
@@ -338,23 +334,52 @@ public class MainActivity extends AppCompatActivity {
 
     //    Apply retrieved length limit to edit text field. This result may be fresh from the server or it may be from cached values.
     private void applyRetrievedLengthLimit() {
-        Long friendly_msg_length = firebaseRemoteConfig.getLong(Constants.FRIENDLY_MSG_LENGTH_KEY);
-        messageEditText.setFilters(new InputFilter[]{new InputFilter.LengthFilter(friendly_msg_length.intValue())});
-        Log.d(Constants.TAG, Constants.FRIENDLY_MSG_LENGTH_KEY + " = " + friendly_msg_length);
+        Long friendlyMsgLength = firebaseRemoteConfig.getLong(Constants.FRIENDLY_MSG_LENGTH_KEY);
+        messageEditText.setFilters(new InputFilter[]{new InputFilter.LengthFilter(friendlyMsgLength.intValue())});
+        Log.d(Constants.TAG, Constants.FRIENDLY_MSG_LENGTH_KEY + " = " + friendlyMsgLength);
+    }
+
+    private void navigateToLastMessage(int position) {
+        messagesRecyclerView.scrollToPosition(position);
     }
 
     @Override
     public void onCreateContextMenu(ContextMenu menu, View v, ContextMenu.ContextMenuInfo menuInfo) {
         menu.setHeaderTitle("Message");
         menu.add(0, Constants.MENU_EDIT_MESSAGE, 0, R.string.edit_message);
-        menu.add(0, Constants.MENU_REMOVE_MESSAGE, 0, R.string.remove_message);
-        menu.add(0, Constants.MENU_COPY_MESSAGE_TEXT, 0, R.string.copy_text);
+        menu.add(1, Constants.MENU_REMOVE_MESSAGE, 0, R.string.remove_message);
+        menu.add(2, Constants.MENU_COPY_MESSAGE_TEXT, 0, R.string.copy_text);
+
+        Boolean isItAuthorisedUser = false;
+        if (currentUser.getDisplayName() != null) {
+            isItAuthorisedUser = currentUser.getDisplayName().equals(clickedMessage.getName());
+        }
+        Boolean isImageMessage = clickedMessage.getPhotoUrl() != null;
+        Boolean isTextMessage = clickedMessage.getPhotoUrl() == null;
+
+        if (isItAuthorisedUser) {
+            if (isImageMessage) {
+                menu.setGroupVisible(0, false);
+                menu.setGroupVisible(1, true);
+                menu.setGroupVisible(2, false);
+            }
+            if (isTextMessage) {
+                menu.setGroupVisible(0, true);
+                menu.setGroupVisible(1, true);
+                menu.setGroupVisible(2, true);
+            }
+        } else {
+            if (isTextMessage) {
+                menu.setGroupVisible(0, false);
+                menu.setGroupVisible(1, false);
+                menu.setGroupVisible(2, true);
+            }
+        }
     }
 
     @Override
     public boolean onContextItemSelected(MenuItem item) {
-        DatabaseReference referenceToMessage = recyclerAdapter.getRef(changedOrAddedMessagePosition);
-
+        DatabaseReference referenceToMessage = recyclerAdapter.getRef(clickedMessagePosition);
         switch (item.getItemId()) {
             case Constants.MENU_EDIT_MESSAGE:
                 updateMessage(referenceToMessage);
@@ -373,7 +398,7 @@ public class MainActivity extends AppCompatActivity {
         sendButton.setVisibility(View.GONE);
         updateButton.setVisibility(View.VISIBLE);
 
-        Message message = (Message) recyclerAdapter.getItem(changedOrAddedMessagePosition);
+        Message message = (Message) recyclerAdapter.getItem(clickedMessagePosition);
         messageEditText.setText(message.getText());
 
         updateButton.setOnClickListener(view -> {
@@ -382,21 +407,10 @@ public class MainActivity extends AppCompatActivity {
             referenceToMessage.setValue(new Message(messageEditText.getText().toString(), message.getName(), message.getPhotoUrl()));
             messageEditText.setText("");
         });
-
-        referenceToMessage.addValueEventListener(new ValueEventListener() {
-            @Override
-            public void onDataChange(DataSnapshot dataSnapshot) {
-            }
-
-            @Override
-            public void onCancelled(DatabaseError databaseError) {
-                Toast.makeText(MainActivity.this, "Error", Toast.LENGTH_SHORT).show();
-            }
-        });
     }
 
     private void copyMessageText() {
-        Message message = (Message) recyclerAdapter.getItem(changedOrAddedMessagePosition);
+        Message message = (Message) recyclerAdapter.getItem(clickedMessagePosition);
         ClipboardManager clipboard = (ClipboardManager) getSystemService(Context.CLIPBOARD_SERVICE);
         if (message.getText() != null) {
             ClipData clip = ClipData.newPlainText("text", message.getText());
