@@ -29,7 +29,6 @@ import android.widget.Toast;
 import com.firebase.ui.auth.AuthUI;
 import com.firebase.ui.database.FirebaseRecyclerAdapter;
 import com.firebase.ui.database.FirebaseRecyclerOptions;
-import com.google.android.gms.ads.AdView;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
 import com.google.firebase.database.DatabaseError;
@@ -88,8 +87,8 @@ public class MainActivity extends AppCompatActivity {
         firebaseRemoteConfig = FirebaseRemoteConfig.getInstance();
 
         // References to Firebase storage & DB
-        messagesDatabaseReference = firebaseDatabase.getReference().child("messages");
-        chatPhotosStorageReference = firebaseStorage.getReference().child("chat_photos");
+        messagesDatabaseReference = firebaseDatabase.getReference().child(Constants.MESSAGES_DATABASE_REFERENCE);
+        chatPhotosStorageReference = firebaseStorage.getReference().child(Constants.CHAT_PHOTOS_REFERENCE);
 
         // Initialize references to views
         progressBar = findViewById(R.id.progressBar);
@@ -139,7 +138,7 @@ public class MainActivity extends AppCompatActivity {
             @Override
             public void onError(DatabaseError error) {
                 super.onError(error);
-                Toast.makeText(MainActivity.this, "Error while getting data", Toast.LENGTH_SHORT).show();
+                Toast.makeText(MainActivity.this, Constants.TOAST_ERROR_GETTING_DATA, Toast.LENGTH_SHORT).show();
             }
         };
 
@@ -154,9 +153,9 @@ public class MainActivity extends AppCompatActivity {
         // ImagePickerButton shows an image picker to upload a image for a message
         photoPickerButton.setOnClickListener(view -> {
             Intent intent = new Intent(Intent.ACTION_GET_CONTENT);
-            intent.setType("image/jpeg");
+            intent.setType(Constants.PHOTO_PICKER_FORMAT);
             intent.putExtra(Intent.EXTRA_LOCAL_ONLY, true);
-            startActivityForResult(Intent.createChooser(intent, "Complete action using"), Constants.RC_PHOTO_PICKER);
+            startActivityForResult(Intent.createChooser(intent, Constants.CHOOSE_IMAGE), Constants.RC_PHOTO_PICKER);
         });
 
         // Enable Send button when there's text to send
@@ -186,7 +185,7 @@ public class MainActivity extends AppCompatActivity {
         sendButton.setOnClickListener(view -> {
             Message message = new Message(messageEditText.getText().toString(), username, null);
             messagesDatabaseReference.push().setValue(message);
-            messageEditText.setText("");
+            messageEditText.setText(Constants.EMPTY_STRING);
         });
 
         authStateListener = firebaseAuth -> { // FirebaseAuth.AuthStateListener()
@@ -236,9 +235,9 @@ public class MainActivity extends AppCompatActivity {
 
         if (requestCode == Constants.RC_SIGN_IN) {
             if (resultCode == RESULT_OK) { // Sign-in succeeded, set up the UI
-                Toast.makeText(this, "Signed in!", Toast.LENGTH_SHORT).show();
+                Toast.makeText(this, Constants.TOAST_SIGNED_IN, Toast.LENGTH_SHORT).show();
             } else if (resultCode == RESULT_CANCELED) { // Sign in was canceled by the user, finish the activity
-                Toast.makeText(this, "Sign in canceled", Toast.LENGTH_SHORT).show();
+                Toast.makeText(this, Constants.TOAST_SIGNED_IN_CANCELED, Toast.LENGTH_SHORT).show();
                 finish();
             }
         } else if (requestCode == Constants.RC_PHOTO_PICKER && resultCode == RESULT_OK) {
@@ -258,7 +257,7 @@ public class MainActivity extends AppCompatActivity {
                                 messagesDatabaseReference.push().setValue(message);
                                 progressBar.setVisibility(View.INVISIBLE);
                             } else {
-                                Toast.makeText(this, "Image wasn't uploaded", Toast.LENGTH_SHORT).show();
+                                Toast.makeText(this, Constants.TOAST_IMAGE_WAS_NOT_UPLOADED, Toast.LENGTH_SHORT).show();
                                 progressBar.setVisibility(View.INVISIBLE);
                             }
                         });
@@ -311,11 +310,11 @@ public class MainActivity extends AppCompatActivity {
 
     // Fetch the config to determine the allowed length of messages.
     public void fetchConfig() {
-        long cacheExpiration = 3600; // 1 hour in seconds
+        long cacheExpiration = Constants.CACHE_EXPIRATION; // 1 hour in seconds
         // If developer mode is enabled reduce cacheExpiration to 0 so that each fetch goes to the
         // server. This should not be used in release builds.
         if (firebaseRemoteConfig.getInfo().getConfigSettings().isDeveloperModeEnabled()) {
-            cacheExpiration = 0;
+            cacheExpiration = Constants.CACHE_EXPIRATION_FOR_DEBUG;
         }
         firebaseRemoteConfig.fetch(cacheExpiration)
                 .addOnSuccessListener(aVoid -> {
@@ -326,7 +325,7 @@ public class MainActivity extends AppCompatActivity {
                 })
                 .addOnFailureListener(e -> {
                     // An error occurred when fetching the config.
-                    Log.w(Constants.TAG, "Error fetching config", e);
+                    Log.w(Constants.TAG, Constants.ERROR_FETCHING_CONFIG, e);
                     // Update the EditText length limit with the newly retrieved values from Remote Config.
                     applyRetrievedLengthLimit();
                 });
@@ -345,10 +344,10 @@ public class MainActivity extends AppCompatActivity {
 
     @Override
     public void onCreateContextMenu(ContextMenu menu, View v, ContextMenu.ContextMenuInfo menuInfo) {
-        menu.setHeaderTitle("Message");
-        menu.add(0, Constants.MENU_EDIT_MESSAGE, 0, R.string.edit_message);
-        menu.add(1, Constants.MENU_REMOVE_MESSAGE, 0, R.string.remove_message);
-        menu.add(2, Constants.MENU_COPY_MESSAGE_TEXT, 0, R.string.copy_text);
+        menu.setHeaderTitle(Constants.MESSAGE_CONTEXT_MENU_TITLE);
+        menu.add(0, Constants.MENU_ITEM_ID_EDIT_MESSAGE, 0, R.string.edit_message);
+        menu.add(1, Constants.MENU_ITEM_ID_REMOVE_MESSAGE, 0, R.string.remove_message);
+        menu.add(2, Constants.MENU_ITEM_ID_COPY_MESSAGE_TEXT, 0, R.string.copy_text);
 
         Boolean isItAuthorisedUser = false;
         if (currentUser.getDisplayName() != null) {
@@ -381,13 +380,13 @@ public class MainActivity extends AppCompatActivity {
     public boolean onContextItemSelected(MenuItem item) {
         DatabaseReference referenceToMessage = recyclerAdapter.getRef(clickedMessagePosition);
         switch (item.getItemId()) {
-            case Constants.MENU_EDIT_MESSAGE:
+            case Constants.MENU_ITEM_ID_EDIT_MESSAGE:
                 updateMessage(referenceToMessage);
                 break;
-            case Constants.MENU_REMOVE_MESSAGE:
+            case Constants.MENU_ITEM_ID_REMOVE_MESSAGE:
                 referenceToMessage.removeValue();
                 break;
-            case Constants.MENU_COPY_MESSAGE_TEXT:
+            case Constants.MENU_ITEM_ID_COPY_MESSAGE_TEXT:
                 copyMessageText();
                 break;
         }
@@ -416,9 +415,9 @@ public class MainActivity extends AppCompatActivity {
             ClipData clip = ClipData.newPlainText("text", message.getText());
             if (clipboard != null) {
                 clipboard.setPrimaryClip(clip);
-                Toast.makeText(MainActivity.this, "Message text saved to clipboard", Toast.LENGTH_SHORT).show();
+                Toast.makeText(MainActivity.this, Constants.TOAST_TEXT_SAVED_TO_CLIPBOARD, Toast.LENGTH_SHORT).show();
             } else {
-                Toast.makeText(MainActivity.this, "Error trying to save to clipboard", Toast.LENGTH_SHORT).show();
+                Toast.makeText(MainActivity.this, Constants.TOAST_ERROR_SAVING_TO_CLIPBOARD, Toast.LENGTH_SHORT).show();
             }
         }
     }
